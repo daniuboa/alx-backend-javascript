@@ -1,26 +1,50 @@
-import fs from 'fs';
+import { readFile } from 'fs';
 
-// eslint-disable-next-line import/prefer-default-export
-export const readDatabase = (filePath) => new Promise((resolve, reject) => {
-  fs.readFile(filePath, 'utf8', (err, data) => {
-    if (err) {
-      reject(err);
-    } else {
-      const lines = data.trim().split('\n');
-      const fields = {};
-      lines.forEach((line, index) => {
-        if (index === 0) {
-          // Skip the header line
-          return;
+/**
+ * function to open a database, clean and present the data
+ * @param {String} path - Path to the file to open
+ * @returns promise
+ */
+function readDatabase(path) {
+  return new Promise((resolve, reject) => {
+    if (!path) {
+      reject(new Error('Cannot load the database'));
+    }
+    if (path) {
+      readFile(path, (err, data) => {
+        if (err) {
+          reject(new Error('Cannot load the database'));
         }
-        // eslint-disable-next-line no-unused-vars
-        const [firstName, lastName, age, field] = line.split(',');
-        if (!fields[field]) {
-          fields[field] = [];
+        if (data) {
+          const fileLines = data.toString('utf-8').trim().split('\n');
+          const studentGroups = {};
+          const dbFieldNames = fileLines[0].split(',');
+          const studentPropNames = dbFieldNames.slice(
+            0,
+            dbFieldNames.length - 1,
+          );
+
+          for (const line of fileLines.slice(1)) {
+            const studentRecord = line.split(',');
+            const studentPropValues = studentRecord.slice(
+              0,
+              studentRecord.length - 1,
+            );
+            const field = studentRecord[studentRecord.length - 1];
+            if (!Object.keys(studentGroups).includes(field)) {
+              studentGroups[field] = [];
+            }
+            const studentEntries = studentPropNames.map((propName, idx) => [
+              propName,
+              studentPropValues[idx],
+            ]);
+            studentGroups[field].push(Object.fromEntries(studentEntries));
+          }
+          resolve(studentGroups);
         }
-        fields[field].push(`${firstName} ${lastName}`);
       });
-      resolve(fields);
     }
   });
-});
+}
+
+export default readDatabase;
